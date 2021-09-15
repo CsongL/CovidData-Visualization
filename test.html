@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- Flag sprites service provided by Martijn Lafeber, https://github.com/lafeber/world-flags-sprite/blob/master/LICENSE -->
+    <link rel="stylesheet" type="text/css" href="https://cloud.github.com/downloads/lafeber/world-flags-sprite/flags32.css" />
+    <script type="text/javascript" src="lib/highcharts.js"></script>
+    <script type="text/javascript" src="lib/map.js"></script>
+    <script type="text/javascript" src="lib/data.js"></script>
+    <script src="https://code.highcharts.com/mapdata/custom/world.js"></script>
+    <!-- <script type="text/javascript" src="lib/jquery-3.6.0.min.js"></script> -->
+    <script type="text/javascript" src="scripts/main.js"></script>
+</head>
+<body>
+    <div id="wrapper">
+        <div id="container"></div>
+        <div id="info">
+            <span class="f32"><span id="flag"></span></span>
+            <h2></h2>
+            <div class="subheader">Click countries to view history</div>
+            <div id="country-chart"></div>
+        </div>
+    </div>
+</body>
+<script>
+let data;
+let mapData;
+// $(document).ready(function(){
+//     $.getJSON("", function(json){
+//         data = json;
+//         console.log(data);
+//     });
+//     mapData = Highcharts.geojson(Highcharts.maps["custom/world"]);
+//     $.each(mapData, function () {
+// 		this.id = this.properties['hc-key']; // for Chart.get()
+// 		this.flag = this.id.replace('UK', 'GB').toLowerCase();
+// 	});
+//     console.log(mapData);
+// });
+Highcharts.ajax({
+    url: "/data/owid-covid-data.json",
+    type: "json",
+    sucess: function(json){
+        console.log(json);
+    }
+})
+</script>
+</html>
