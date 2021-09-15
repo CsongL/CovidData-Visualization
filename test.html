@@ -11,41 +11,274 @@
     <script type="text/javascript" src="lib/map.js"></script>
     <script type="text/javascript" src="lib/data.js"></script>
     <script src="https://code.highcharts.com/mapdata/custom/world.js"></script>
-    <!-- <script type="text/javascript" src="lib/jquery-3.6.0.min.js"></script> -->
-    <script type="text/javascript" src="scripts/main.js"></script>
+    <script type="text/javascript" src="lib/jquery-3.6.0.min.js"></script>
+    <!-- <script type="text/javascript" src="scripts/main.js"></script> -->
 </head>
 <body>
     <div id="wrapper">
         <div id="container"></div>
         <div id="info">
             <span class="f32"><span id="flag"></span></span>
-            <h2></h2>
+            <h2 id="info-h2"></h2>
             <div class="subheader">Click countries to view history</div>
             <div id="country-chart"></div>
         </div>
     </div>
 </body>
 <script>
-let data;
-let mapData;
-// $(document).ready(function(){
-//     $.getJSON("", function(json){
-//         data = json;
-//         console.log(data);
-//     });
-//     mapData = Highcharts.geojson(Highcharts.maps["custom/world"]);
-//     $.each(mapData, function () {
-// 		this.id = this.properties['hc-key']; // for Chart.get()
-// 		this.flag = this.id.replace('UK', 'GB').toLowerCase();
-// 	});
-//     console.log(mapData);
-// });
+let numRegex = /^[0-9\.]+$/,
+    quoteRegex = /\"/g,
+    lastCommaRegex = /,\s$/;
+let countryChart;
+
+
 Highcharts.ajax({
-    url: "/data/owid-covid-data.json",
-    type: "json",
-    sucess: function(json){
+    url: 'data/owid-covid-data-processed.csv',
+    // url: 'https://covid.ourworldindata.org/data/owid-covid-data.json',
+    dataType: 'csv',
+    success: function(json){
+        console.log("sucessfully loaded data");
         console.log(json);
+        let mapChart
+    },
+    error: function(error){
+       if(error.response != ""){
+           let mapData = getMapData(); // map data
+           let csv = error.response;  
+           
+           csv = csv.split(/\r\n/);
+           
+           let categories = csv[0].split(",");
+
+           csv.forEach(function(line, index){
+               csv[index] = line.split(",");
+           })
+
+           console.log(csv);
+           let dateArray = getDate(csv);
+           console.log(dateArray);
+
+           let countries = getDatabyCategory(csv, "total_cases");
+           console.log(countries);
+           
+           let data = getLatestValue(countries, dateArray);
+           console.log('data',data); 
+           console.log('mapdat', mapData);
+
+           // implement map select method
+           // wrap point.select
+           Highcharts.wrap(Highcharts.Point.prototype, 'select', function(proceed){
+               console.log(Array.prototype.slice.call(arguments, 1));
+               console.log(arguments);
+
+               proceed.apply(this, Array.prototype.slice.call(arguments, 1));
+
+               let points = mapChart.getSelectedPoints();
+               console.log(points);
+               if(points.length){
+                   if(points.length == 1){
+                       $("#flag").className = 'flag' + points[0].flag;
+                       $("#info-h2").innerHTML = points[0].name;
+                   } else {
+                       $('#flag').className = 'flag';
+                       $('#info-h2').innerHTML = 'Compare countries';
+                   }
+               }
+               $('.subheader').innerHTML = '<h4>Confirmed cases</h4><small><em>Shift + Click on map to compare countries</em></small>';
+               if(!countryChart){
+                   countryChart = Highcharts.chart('country-chart', {
+                       chart: {
+                           height: 250,
+                           spacingLeft: 0
+                       },
+                       credits: {
+                           enabled: false
+                       },
+                       title: {
+                           text: null
+                       },
+                       subtitle: {
+                           text: null
+                       },
+                       xAxis: {
+                           tickPixeInterval: 50,
+                           crosshair: true
+                       },
+                       yAxis: {
+                           title: null,
+                           opposite: true
+                       },
+                       tooltip: {
+                           split: true
+                       },
+                       plotOptions: {
+                           series: {
+                               animation: {
+                                   duration: 500
+                               },
+                               marker: {
+                                   enabled: false
+                               },
+                               threshold: 0,
+                               pointStart: new Date(dateArray[0]).getMonth()
+                           }
+                       }
+                   });
+                   // remove old series and redraw
+                   countryChart.series.slice(0).forEach(function(s) {
+                       s.remove(false);
+                   })
+
+                   // add new series
+                   points.forEach(function (p){
+                       console.log(p);
+                       countryChart.addSeries({
+                           name: p.name,
+                           data: countries[p.code3].data,
+                           type: points.length > 1 ? 'line' : 'area'
+                       }, false);
+                   });
+                   countryChart.redraw();
+               } else {
+                   $('#flag').className = '';
+                   $('#info-h2').innerHTML = '';
+                   $('.subheader').innerHTML = '';
+                   if(countryChart){
+                    countryChart = countryChart.destroy();
+                   }
+               }
+           
+            });
+
+
+           //create a mapchart
+           let mapChart = Highcharts.mapChart('container', {
+               title: {
+                   text: "Total COVID-19 cases, Step 14, 2021"
+               },
+               subtitle: {
+                   text: "The number of confirmed cases is lower than the number of actual cases; the main reason for that is limited testing"
+               },
+               mapNavigation: {
+                   enabled: true,
+                   buttonOptions: {
+                     verticalAlign: 'bottom'
+                   }
+               },
+               colorAxis: {
+                    type: 'logarithmic',
+                    endOnTick: false,
+                    startOnTick: false,
+                    min: 500
+                },
+
+                tooltip: {
+                    footerFormat: '<span style="font-size: 10px">(Click for details)</span>'
+                },
+
+                series: [{
+                    data: data,
+                    mapData: mapData,
+                    joinBy: ['iso-a3', 'code3'],
+                    name: 'Current confimed cases',
+                    allowPointSelect: true,
+                    cursor: 'pointer',
+                    states:{
+                        select: {
+                            color: '#a4edba',
+                            borderColor: 'black',
+                            dashStyle: 'shortdot'
+                        }
+                    },
+                    borderWidth: 0.5
+                }]
+           });
+           mapChart.get('us').select();
+       }else{
+           console.log("read local data failed");
+       }
+    }  
+});
+
+
+// get latest value for current number
+function getLatestValue(countries, dateArray){
+    let latestData = [];
+    for(let code3 in countries){
+        if(Object.hasOwnProperty.call(countries, code3)){
+            let value = null;
+            let day = null;
+            let itemData = countries[code3].data;
+            let i = itemData.length;
+            while(i--){
+                if(typeof itemData[i] === 'number'){
+                    value = itemData[i];
+                    day = dateArray[i];
+                    break; 
+                }
+            }
+            latestData.push({
+                name: countries[code3].name,
+                code3: code3,
+                value: value,
+                day: day
+                
+            });
+        }    
     }
-})
+    return latestData;
+}
+
+// get map data
+function getMapData(){
+    let mapData = Highcharts.geojson(Highcharts.maps['custom/world']);
+    mapData.forEach(function (country) {
+        country.id = country.properties['hc-key']; // for Chart.get()
+        country.flag = country.id.replace('UK', 'GB').toLowerCase();
+    });
+    return mapData;
+}
+
+//  get date array
+function getDate(rawData){
+    let dateArray = [];
+    let iso_code = rawData[1][0];
+    let i = 1;
+    while(iso_code == rawData[i][0]){
+        dateArray.push(rawData[i++][3]);
+    }
+    return dateArray;
+}
+
+//  accoring to category to get data during one month
+function getDatabyCategory(rawData, category){
+    
+    let countries = {};
+    let index = rawData[0].indexOf(category);
+    console.log(index);
+    for(let i =1; i < rawData.length-1;){
+        let iso_code = rawData[i][0];
+        let countryname = rawData[i][2];
+        let tempArray = [];
+        while(i < rawData.length-1 && rawData[i][0] == iso_code){
+            let val = rawData[i][index].replace(quoteRegex, '');
+            if(numRegex.test(val)){
+                val = parseFloat(val);
+            }else if(!val || lastCommaRegex.test(val)){
+                val = null;  // 这里可能存在问题
+            }
+            tempArray.push(val);
+            i++;
+        }
+        countries[iso_code] = {
+            name: countryname,
+            code3: iso_code,
+            data: tempArray
+        }
+        
+    }
+
+    return countries;
+}
 </script>
 </html>
