@@ -1,0 +1,37 @@
+body{
+    width: 100vw;
+    height: 100vh;
+    background-image: linear-gradient(to bottom, #a3bded 0%, #6991c7 100%);
+    background-size:cover;
+}
+#F-dynamicbg-box {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+}
+#F-dynamicbg-box > div {
+    z-index: -9999;
+    background-color: #a4e7ea4f;
+    position: absolute;
+    top: 105vh;
+    animation: dynamicDiv 18s linear infinite;
+}
+#F-dynamicbg-box > div:nth-of-type(1) { animation-delay: 0s }
+#F-dynamicbg-box > div:nth-of-type(2) { animation-delay: 2s }
+#F-dynamicbg-box > div:nth-of-type(3) { animation-delay: 6s }
+#F-dynamicbg-box > div:nth-of-type(4) { animation-delay: 8s }
+#F-dynamicbg-box > div:nth-of-type(5) { animation-delay: 12s }
+#F-dynamicbg-box > div:nth-of-type(6) { animation-delay: 4s }
+#F-dynamicbg-box > div:nth-of-type(7) { animation-delay: 10s }
+#F-dynamicbg-box > div:nth-of-type(8) { animation-delay: 14s }
+#F-dynamicbg-box > div:nth-of-type(9) { animation-delay: 18s }
+#F-dynamicbg-box > div:nth-of-type(10) { animation-delay: 16s }
+
+
+@keyframes dynamicDiv {
+    form { top: 105vh; transform: scale(1.2); }
+    to { top: -13vh; transform: scale(1) rotate(60deg); }
+}
